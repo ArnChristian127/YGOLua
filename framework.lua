@@ -1,3 +1,10 @@
+put = {
+    TOHAND = 0,
+    TOGRAVE = 1,
+    TODECK = 2,
+    REMOVE = 3
+}
+
 onCreate={
     CardEffect=function(self,card,datasets) 
         local effectMethods={
@@ -21,9 +28,22 @@ onCreate={
         end
     end
 }
---special summon--
-sp={
-    selfcheck=function(self, check, opinfo)
+condition={
+    check=function(self,check)
+        return function(e,tp,eg,ep,ev,re,r,rp)
+            for _,v in pairs(check) do
+                if type(v) == "function" then
+                    if v(e,tp,eg,ep,ev,re,r,rp) then return true end
+                elseif v then
+                    return true
+                end
+            end
+            return false
+        end
+    end,
+}
+target={
+    check=function(self, check, opinfo)
         return function(e,tp,eg,ep,ev,re,r,rp,chk)
             if chk == 0 then
                 for _, v in pairs(check) do
@@ -44,28 +64,36 @@ sp={
                 end
             end
         end
-    end,
-    selfactivation=function(self, next, nextbreak)
+    end
+}
+--special summon--
+selfsp={
+    --operation--
+    activation=function(self, next, nextbreak)
         return function(e,tp,eg,ep,ev,re,r,rp)
             local c=e:GetHandler()
             if c:IsRelateToEffect(e) then
                 local res=Duel.SpecialSummon(c,0,tp,tp,false,false,POS_FACEUP)
                 if res>0 then
                     if nextbreak == true then Duel.BreakEffect() end
-                    next(e,tp,eg,ep,ev,re,r,rp)
+                    if next then next(e,tp,eg,ep,ev,re,r,rp) end
                 end
             end
         end
     end
 }
---common effects--
-put = {
-    TOHAND = 0,
-    TOGRAVE = 1,
-    TODECK = 2,
-    REMOVE = 3
+--search--
+search={
+    activation=function(self, query, types, y, o, min, max, next, nextbreak)
+        return function(e,tp,eg,ep,ev,re,r,rp)
+            dynamic_search(query, types, y, o, min, max)(e, tp, eg, ep, ev, re, r, rp)
+            if nextbreak == true then Duel.BreakEffect() end
+            if next then next(e,tp,eg,ep,ev,re,r,rp) end
+        end
+    end
 }
-function search(query, types, y, o, min, max)
+--common effects--
+function dynamic_search(query, types, y, o, min, max)
     return function(e, tp, eg, ep, ev, re, r, rp)
         local maps = {
             [put.TOHAND] = HINTMSG_ATOHAND,
